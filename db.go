@@ -203,6 +203,10 @@ func Open(opt Options) (db *DB, err error) {
 		opt.CompactL0OnClose = false
 	}
 
+	if opt.KeyComparator == nil {
+		opt.KeyComparator = y.DefaultKeyComparator{}
+	}
+
 	for _, path := range []string{opt.Dir, opt.ValueDir} {
 		dirExists, err := exists(path)
 		if err != nil {
@@ -282,7 +286,7 @@ func Open(opt Options) (db *DB, err error) {
 	db.calculateSize()
 	db.closers.updateSize = y.NewCloser(1)
 	go db.updateSize(db.closers.updateSize)
-	db.mt = skl.NewSkiplist(arenaSize(opt))
+	db.mt = skl.NewSkiplist(arenaSize(opt), opt.KeyComparator)
 
 	// newLevelsController potentially loads files in directory.
 	if db.lc, err = newLevelsController(db, &manifest); err != nil {
@@ -831,7 +835,7 @@ func (db *DB) ensureRoomForWrite() error {
 			db.mt.MemSize(), len(db.flushChan))
 		// We manage to push this task. Let's modify imm.
 		db.imm = append(db.imm, db.mt)
-		db.mt = skl.NewSkiplist(arenaSize(db.opt))
+		db.mt = skl.NewSkiplist(arenaSize(db.opt), db.opt.KeyComparator)
 		// New memtable is empty. We certainly have room.
 		return nil
 	default:
@@ -909,7 +913,7 @@ func (db *DB) handleFlushTask(ft flushTask) error {
 		db.elog.Errorf("ERROR while syncing level directory: %v", dirSyncErr)
 	}
 
-	tbl, err := table.OpenTable(fd, db.opt.TableLoadingMode, nil)
+	tbl, err := table.OpenTable(fd, db.opt.TableLoadingMode, db.opt.KeyComparator, nil)
 	if err != nil {
 		db.elog.Printf("ERROR while opening table: %v", err)
 		return err
@@ -1374,7 +1378,7 @@ func (db *DB) dropAll() (func(), error) {
 		mt.DecrRef()
 	}
 	db.imm = db.imm[:0]
-	db.mt = skl.NewSkiplist(arenaSize(db.opt)) // Set it up for future writes.
+	db.mt = skl.NewSkiplist(arenaSize(db.opt), db.opt.KeyComparator) // Set it up for future writes.
 
 	num, err := db.lc.dropTree()
 	if err != nil {
@@ -1430,7 +1434,7 @@ func (db *DB) DropPrefix(prefix []byte) error {
 		memtable.DecrRef()
 	}
 	db.imm = db.imm[:0]
-	db.mt = skl.NewSkiplist(arenaSize(db.opt))
+	db.mt = skl.NewSkiplist(arenaSize(db.opt), db.opt.KeyComparator)
 
 	// Drop prefixes from the levels.
 	if err := db.lc.dropPrefix(prefix); err != nil {

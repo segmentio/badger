@@ -81,7 +81,7 @@ func TestTableIterator(t *testing.T) {
 	for _, n := range []int{99, 100, 101} {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
 			f := buildTestTable(t, "key", n)
-			table, err := OpenTable(f, options.MemoryMap, nil)
+			table, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 			require.NoError(t, err)
 			defer table.DecrRef()
 			it := table.NewIterator(false)
@@ -103,7 +103,7 @@ func TestSeekToFirst(t *testing.T) {
 	for _, n := range []int{99, 100, 101, 199, 200, 250, 9999, 10000} {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
 			f := buildTestTable(t, "key", n)
-			table, err := OpenTable(f, options.MemoryMap, nil)
+			table, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 			require.NoError(t, err)
 			defer table.DecrRef()
 			it := table.NewIterator(false)
@@ -121,7 +121,7 @@ func TestSeekToLast(t *testing.T) {
 	for _, n := range []int{99, 100, 101, 199, 200, 250, 9999, 10000} {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
 			f := buildTestTable(t, "key", n)
-			table, err := OpenTable(f, options.MemoryMap, nil)
+			table, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 			require.NoError(t, err)
 			defer table.DecrRef()
 			it := table.NewIterator(false)
@@ -142,7 +142,7 @@ func TestSeekToLast(t *testing.T) {
 
 func TestSeek(t *testing.T) {
 	f := buildTestTable(t, "k", 10000)
-	table, err := OpenTable(f, options.MemoryMap, nil)
+	table, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer table.DecrRef()
 
@@ -177,7 +177,7 @@ func TestSeek(t *testing.T) {
 
 func TestSeekForPrev(t *testing.T) {
 	f := buildTestTable(t, "k", 10000)
-	table, err := OpenTable(f, options.MemoryMap, nil)
+	table, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer table.DecrRef()
 
@@ -215,7 +215,7 @@ func TestIterateFromStart(t *testing.T) {
 	for _, n := range []int{99, 100, 101, 199, 200, 250, 9999, 10000} {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
 			f := buildTestTable(t, "key", n)
-			table, err := OpenTable(f, options.MemoryMap, nil)
+			table, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 			require.NoError(t, err)
 			defer table.DecrRef()
 			ti := table.NewIterator(false)
@@ -242,7 +242,7 @@ func TestIterateFromEnd(t *testing.T) {
 	for _, n := range []int{99, 100, 101, 199, 200, 250, 9999, 10000} {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
 			f := buildTestTable(t, "key", n)
-			table, err := OpenTable(f, options.FileIO, nil)
+			table, err := OpenTable(f, options.FileIO, new(y.DefaultKeyComparator), nil)
 			require.NoError(t, err)
 			defer table.DecrRef()
 			ti := table.NewIterator(false)
@@ -265,7 +265,7 @@ func TestIterateFromEnd(t *testing.T) {
 
 func TestTable(t *testing.T) {
 	f := buildTestTable(t, "key", 10000)
-	table, err := OpenTable(f, options.FileIO, nil)
+	table, err := OpenTable(f, options.FileIO, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer table.DecrRef()
 	ti := table.NewIterator(false)
@@ -292,7 +292,7 @@ func TestTable(t *testing.T) {
 
 func TestIterateBackAndForth(t *testing.T) {
 	f := buildTestTable(t, "key", 10000)
-	table, err := OpenTable(f, options.MemoryMap, nil)
+	table, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer table.DecrRef()
 
@@ -333,7 +333,7 @@ func TestIterateBackAndForth(t *testing.T) {
 
 func TestUniIterator(t *testing.T) {
 	f := buildTestTable(t, "key", 10000)
-	table, err := OpenTable(f, options.MemoryMap, nil)
+	table, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer table.DecrRef()
 	{
@@ -369,7 +369,7 @@ func TestConcatIteratorOneTable(t *testing.T) {
 		{"k2", "a2"},
 	})
 
-	tbl, err := OpenTable(f, options.MemoryMap, nil)
+	tbl, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer tbl.DecrRef()
 
@@ -389,13 +389,13 @@ func TestConcatIterator(t *testing.T) {
 	f := buildTestTable(t, "keya", 10000)
 	f2 := buildTestTable(t, "keyb", 10000)
 	f3 := buildTestTable(t, "keyc", 10000)
-	tbl, err := OpenTable(f, options.MemoryMap, nil)
+	tbl, err := OpenTable(f, options.MemoryMap, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer tbl.DecrRef()
-	tbl2, err := OpenTable(f2, options.LoadToRAM, nil)
+	tbl2, err := OpenTable(f2, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer tbl2.DecrRef()
-	tbl3, err := OpenTable(f3, options.LoadToRAM, nil)
+	tbl3, err := OpenTable(f3, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer tbl3.DecrRef()
 
@@ -474,15 +474,15 @@ func TestMergingIterator(t *testing.T) {
 		{"k1", "b1"},
 		{"k2", "b2"},
 	})
-	tbl1, err := OpenTable(f1, options.LoadToRAM, nil)
+	tbl1, err := OpenTable(f1, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer tbl1.DecrRef()
-	tbl2, err := OpenTable(f2, options.LoadToRAM, nil)
+	tbl2, err := OpenTable(f2, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer tbl2.DecrRef()
 	it1 := tbl1.NewIterator(false)
 	it2 := NewConcatIterator([]*Table{tbl2}, false)
-	it := y.NewMergeIterator([]y.Iterator{it1, it2}, false)
+	it := y.NewMergeIterator([]y.Iterator{it1, it2}, new(y.DefaultKeyComparator), false)
 	defer it.Close()
 
 	it.Rewind()
@@ -514,15 +514,15 @@ func TestMergingIteratorReversed(t *testing.T) {
 		{"k1", "b1"},
 		{"k2", "b2"},
 	})
-	tbl1, err := OpenTable(f1, options.LoadToRAM, nil)
+	tbl1, err := OpenTable(f1, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer tbl1.DecrRef()
-	tbl2, err := OpenTable(f2, options.LoadToRAM, nil)
+	tbl2, err := OpenTable(f2, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer tbl2.DecrRef()
 	it1 := tbl1.NewIterator(true)
 	it2 := NewConcatIterator([]*Table{tbl2}, true)
-	it := y.NewMergeIterator([]y.Iterator{it1, it2}, true)
+	it := y.NewMergeIterator([]y.Iterator{it1, it2}, new(y.DefaultKeyComparator), true)
 	defer it.Close()
 
 	it.Rewind()
@@ -553,16 +553,16 @@ func TestMergingIteratorTakeOne(t *testing.T) {
 	})
 	f2 := buildTable(t, [][]string{})
 
-	t1, err := OpenTable(f1, options.LoadToRAM, nil)
+	t1, err := OpenTable(f1, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer t1.DecrRef()
-	t2, err := OpenTable(f2, options.LoadToRAM, nil)
+	t2, err := OpenTable(f2, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer t2.DecrRef()
 
 	it1 := NewConcatIterator([]*Table{t1}, false)
 	it2 := NewConcatIterator([]*Table{t2}, false)
-	it := y.NewMergeIterator([]y.Iterator{it1, it2}, false)
+	it := y.NewMergeIterator([]y.Iterator{it1, it2}, new(y.DefaultKeyComparator), false)
 	defer it.Close()
 
 	it.Rewind()
@@ -593,16 +593,16 @@ func TestMergingIteratorTakeTwo(t *testing.T) {
 		{"k2", "a2"},
 	})
 
-	t1, err := OpenTable(f1, options.LoadToRAM, nil)
+	t1, err := OpenTable(f1, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer t1.DecrRef()
-	t2, err := OpenTable(f2, options.LoadToRAM, nil)
+	t2, err := OpenTable(f2, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 	require.NoError(t, err)
 	defer t2.DecrRef()
 
 	it1 := NewConcatIterator([]*Table{t1}, false)
 	it2 := NewConcatIterator([]*Table{t2}, false)
-	it := y.NewMergeIterator([]y.Iterator{it1, it2}, false)
+	it := y.NewMergeIterator([]y.Iterator{it1, it2}, new(y.DefaultKeyComparator), false)
 	defer it.Close()
 
 	it.Rewind()
@@ -681,7 +681,7 @@ func BenchmarkReadMerged(b *testing.B) {
 			y.Check(builder.Add([]byte(k), y.ValueStruct{Value: []byte(v), Meta: 123, UserMeta: 0}))
 		}
 		f.Write(builder.Finish())
-		tbl, err := OpenTable(f, options.LoadToRAM, nil)
+		tbl, err := OpenTable(f, options.LoadToRAM, new(y.DefaultKeyComparator), nil)
 		y.Check(err)
 		tables = append(tables, tbl)
 		defer tbl.DecrRef()
@@ -695,7 +695,7 @@ func BenchmarkReadMerged(b *testing.B) {
 			for _, tbl := range tables {
 				iters = append(iters, tbl.NewIterator(false))
 			}
-			it := y.NewMergeIterator(iters, false)
+			it := y.NewMergeIterator(iters, new(y.DefaultKeyComparator), false)
 			defer it.Close()
 			for it.Rewind(); it.Valid(); it.Next() {
 			}

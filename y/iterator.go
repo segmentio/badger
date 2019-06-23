@@ -105,29 +105,32 @@ type elem struct {
 	reversed bool
 }
 
-type elemHeap []*elem
+type elemHeap struct {
+	heap          []*elem
+	keyComparator KeyComparator
+}
 
-func (eh elemHeap) Len() int            { return len(eh) }
-func (eh elemHeap) Swap(i, j int)       { eh[i], eh[j] = eh[j], eh[i] }
-func (eh *elemHeap) Push(x interface{}) { *eh = append(*eh, x.(*elem)) }
+func (eh elemHeap) Len() int            { return len(eh.heap) }
+func (eh elemHeap) Swap(i, j int)       { eh.heap[i], eh.heap[j] = eh.heap[j], eh.heap[i] }
+func (eh *elemHeap) Push(x interface{}) { eh.heap = append(eh.heap, x.(*elem)) }
 func (eh *elemHeap) Pop() interface{} {
 	// Remove the last element, because Go has already swapped 0th elem <-> last.
-	old := *eh
+	old := eh.heap
 	n := len(old)
 	x := old[n-1]
-	*eh = old[0 : n-1]
+	eh.heap = old[0 : n-1]
 	return x
 }
 func (eh elemHeap) Less(i, j int) bool {
-	cmp := CompareKeys(eh[i].itr.Key(), eh[j].itr.Key())
+	cmp := eh.keyComparator.CompareKeys(eh.heap[i].itr.Key(), eh.heap[j].itr.Key())
 	if cmp < 0 {
-		return !eh[i].reversed
+		return !eh.heap[i].reversed
 	}
 	if cmp > 0 {
-		return eh[i].reversed
+		return eh.heap[i].reversed
 	}
 	// The keys are equal. In this case, lower nice take precedence. This is important.
-	return eh[i].nice < eh[j].nice
+	return eh.heap[i].nice < eh.heap[j].nice
 }
 
 // MergeIterator merges multiple iterators.
@@ -141,9 +144,10 @@ type MergeIterator struct {
 }
 
 // NewMergeIterator returns a new MergeIterator from a list of Iterators.
-func NewMergeIterator(iters []Iterator, reversed bool) *MergeIterator {
+func NewMergeIterator(iters []Iterator, comp KeyComparator, reversed bool) *MergeIterator {
 	m := &MergeIterator{all: iters, reversed: reversed}
-	m.h = make(elemHeap, 0, len(iters))
+	m.h.heap = make([]*elem, 0, len(iters))
+	m.h.keyComparator = comp
 	m.initHeap()
 	return m
 }
@@ -159,22 +163,22 @@ func (s *MergeIterator) storeKey(smallest Iterator) {
 // initHeap checks all iterators and initializes our heap and array of keys.
 // Whenever we reverse direction, we need to run this.
 func (s *MergeIterator) initHeap() {
-	s.h = s.h[:0]
+	s.h.heap = s.h.heap[:0]
 	for idx, itr := range s.all {
 		if !itr.Valid() {
 			continue
 		}
 		e := &elem{itr: itr, nice: idx, reversed: s.reversed}
-		s.h = append(s.h, e)
+		s.h.heap = append(s.h.heap, e)
 	}
 	heap.Init(&s.h)
-	for len(s.h) > 0 {
-		it := s.h[0].itr
+	for len(s.h.heap) > 0 {
+		it := s.h.heap[0].itr
 		if it == nil || !it.Valid() {
 			heap.Pop(&s.h)
 			continue
 		}
-		s.storeKey(s.h[0].itr)
+		s.storeKey(s.h.heap[0].itr)
 		break
 	}
 }
@@ -184,46 +188,46 @@ func (s *MergeIterator) Valid() bool {
 	if s == nil {
 		return false
 	}
-	if len(s.h) == 0 {
+	if len(s.h.heap) == 0 {
 		return false
 	}
-	return s.h[0].itr.Valid()
+	return s.h.heap[0].itr.Valid()
 }
 
 // Key returns the key associated with the current iterator
 func (s *MergeIterator) Key() []byte {
-	if len(s.h) == 0 {
+	if len(s.h.heap) == 0 {
 		return nil
 	}
-	return s.h[0].itr.Key()
+	return s.h.heap[0].itr.Key()
 }
 
 // Value returns the value associated with the iterator.
 func (s *MergeIterator) Value() ValueStruct {
-	if len(s.h) == 0 {
+	if len(s.h.heap) == 0 {
 		return ValueStruct{}
 	}
-	return s.h[0].itr.Value()
+	return s.h.heap[0].itr.Value()
 }
 
 // Next returns the next element. If it is the same as the current key, ignore it.
 func (s *MergeIterator) Next() {
-	if len(s.h) == 0 {
+	if len(s.h.heap) == 0 {
 		return
 	}
 
-	smallest := s.h[0].itr
+	smallest := s.h.heap[0].itr
 	smallest.Next()
 
-	for len(s.h) > 0 {
-		smallest = s.h[0].itr
+	for len(s.h.heap) > 0 {
+		smallest = s.h.heap[0].itr
 		if !smallest.Valid() {
 			heap.Pop(&s.h)
 			continue
 		}
 
 		heap.Fix(&s.h, 0)
-		smallest = s.h[0].itr
+		smallest = s.h.heap[0].itr
 		if smallest.Valid() {
 			if !bytes.Equal(smallest.Key(), s.curKey) {
 				break

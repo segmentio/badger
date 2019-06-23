@@ -258,7 +258,7 @@ func (w *sortedWriter) handleRequests(closer *y.Closer) {
 
 // Add adds key and vs to sortedWriter.
 func (w *sortedWriter) Add(key []byte, vs y.ValueStruct) error {
-	if len(w.lastKey) > 0 && y.CompareKeys(key, w.lastKey) <= 0 {
+	if len(w.lastKey) > 0 && w.db.opt.KeyComparator.CompareKeys(key, w.lastKey) <= 0 {
 		return ErrUnsortedKey
 	}
 
@@ -308,7 +308,7 @@ func (w *sortedWriter) createTable(data []byte) error {
 	if _, err := fd.Write(data); err != nil {
 		return err
 	}
-	tbl, err := table.OpenTable(fd, w.db.opt.TableLoadingMode, nil)
+	tbl, err := table.OpenTable(fd, w.db.opt.TableLoadingMode, w.db.opt.KeyComparator, nil)
 	if err != nil {
 		return err
 	}

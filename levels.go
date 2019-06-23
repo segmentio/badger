@@ -151,7 +151,7 @@ func newLevelsController(db *DB, mf *Manifest) (*levelsController, error) {
 				return
 			}
 
-			t, err := table.OpenTable(fd, db.opt.TableLoadingMode, tf.Checksum)
+			t, err := table.OpenTable(fd, db.opt.TableLoadingMode, db.opt.KeyComparator, tf.Checksum)
 			if err != nil {
 				if strings.HasPrefix(err.Error(), "CHECKSUM_MISMATCH:") {
 					db.opt.Errorf(err.Error())
@@ -390,7 +390,7 @@ func (s *levelsController) pickCompactLevels() (prios []compactionPriority) {
 	// addLevel0Table uses.
 
 	// cstatus is checked to see if level 0's tables are already being compacted
-	if !s.cstatus.overlapsWith(0, infRange) && s.isLevel0Compactable() {
+	if !s.cstatus.overlapsWith(0, infRange(s.kv.opt.KeyComparator)) && s.isLevel0Compactable() {
 		pri := compactionPriority{
 			level: 0,
 			score: float64(s.levels[0].numTables()) / float64(s.kv.opt.NumLevelZeroTables),
@@ -424,7 +424,7 @@ func (s *levelsController) compactBuildTables(
 
 	var hasOverlap bool
 	{
-		kr := getKeyRange(cd.top)
+		kr := getKeyRange(cd.top, s.kv.opt.KeyComparator)
 		for i, lh := range s.levels {
 			if i <= lev { // Skip upper levels.
 				continue
@@ -472,7 +472,7 @@ func (s *levelsController) compactBuildTables(
 		valid = append(valid, table)
 	}
 	iters = append(iters, table.NewConcatIterator(valid, false))
-	it := y.NewMergeIterator(iters, false)
+	it := y.NewMergeIterator(iters, s.kv.opt.KeyComparator, false)
 	defer it.Close() // Important to close the iterator to do ref counting.
 
 	it.Rewind()
@@ -580,7 +580,7 @@ func (s *levelsController) compactBuildTables(
 					return
 				}
 
-				tbl, err := table.OpenTable(fd, s.kv.opt.TableLoadingMode, nil)
+				tbl, err := table.OpenTable(fd, s.kv.opt.TableLoadingMode, s.kv.opt.KeyComparator, nil)
 				// decrRef is added below.
 				resultCh <- newTableResult{tbl, errors.Wrapf(err, "Unable to open table: %q", fd.Name())}
 			}(builder)
@@ -618,7 +618,7 @@ func (s *levelsController) compactBuildTables(
 	}
 
 	sort.Slice(newTables, func(i, j int) bool {
-		return y.CompareKeys(newTables[i].Biggest(), newTables[j].Biggest()) < 0
+		return s.kv.opt.KeyComparator.CompareKeys(newTables[i].Biggest(), newTables[j].Biggest()) < 0
 	})
 	if err := s.kv.vlog.updateDiscardStats(discardStats); err != nil {
 		return nil, nil, errors.Wrap(err, "failed to update discard stats")
@@ -678,9 +678,9 @@ func (s *levelsController) fillTablesL0(cd *compactDef) bool {
 	if len(cd.top) == 0 {
 		return false
 	}
-	cd.thisRange = infRange
+	cd.thisRange = infRange(s.kv.opt.KeyComparator)
 
-	kr := getKeyRange(cd.top)
+	kr := getKeyRange(cd.top, s.kv.opt.KeyComparator)
 	left, right := cd.nextLevel.overlappingTables(levelHandlerRLocked{}, kr)
 	cd.bot = make([]*table.Table, right-left)
 	copy(cd.bot, cd.nextLevel.tables[left:right])
@@ -688,7 +688,7 @@ func (s *levelsController) fillTablesL0(cd *compactDef) bool {
 	if len(cd.bot) == 0 {
 		cd.nextRange = kr
 	} else {
-		cd.nextRange = getKeyRange(cd.bot)
+		cd.nextRange = getKeyRange(cd.bot, s.kv.opt.KeyComparator)
 	}
 
 	if !s.cstatus.compareAndAdd(thisAndNextLevelRLocked{}, *cd) {
@@ -720,7 +720,8 @@ func (s *levelsController) fillTables(cd *compactDef) bool {
 			// We pick all the versions of the smallest and the biggest key.
 			left: y.KeyWithTs(y.ParseKey(t.Smallest()), math.MaxUint64),
 			// Note that version zero would be the rightmost key.
-			right: y.KeyWithTs(y.ParseKey(t.Biggest()), 0),
+			right:         y.KeyWithTs(y.ParseKey(t.Biggest()), 0),
+			keyComparator: s.kv.opt.KeyComparator,
 		}
 		if s.cstatus.overlapsWith(cd.thisLevel.level, cd.thisRange) {
 			continue
@@ -739,7 +740,7 @@ func (s *levelsController) fillTables(cd *compactDef) bool {
 			}
 			return true
 		}
-		cd.nextRange = getKeyRange(cd.bot)
+		cd.nextRange = getKeyRange(cd.bot, s.kv.opt.KeyComparator)
 
 		if s.cstatus.overlapsWith(cd.nextLevel.level, cd.nextRange) {
 			continue

@@ -53,6 +53,12 @@ var (
 	dummyCloserChan = make(chan struct{})
 )
 
+// KeyComparator returns an integer comparing two keys.
+// The result will be 0 if key1==key2, negative if key1 < key2, and positive if key1 > key2.
+type KeyComparator interface {
+	CompareKeys(key1 []byte, key2 []byte) int
+}
+
 // OpenExistingFile opens an existing file, errors if it doesn't exist.
 func OpenExistingFile(filename string, flags uint32) (*os.File, error) {
 	openFlags := os.O_RDWR
@@ -121,11 +127,14 @@ func ParseTs(key []byte) uint64 {
 	return math.MaxUint64 - binary.BigEndian.Uint64(key[len(key)-8:])
 }
 
+// DefaultKeyComparator is the used as the default KeyComparator for a given Badger instance.
+type DefaultKeyComparator struct{}
+
 // CompareKeys checks the key without timestamp and checks the timestamp if keyNoTs
 // is same.
 // a<timestamp> would be sorted higher than aa<timestamp> if we use bytes.compare
 // All keys should have timestamp.
-func CompareKeys(key1, key2 []byte) int {
+func (DefaultKeyComparator) CompareKeys(key1, key2 []byte) int {
 	AssertTrue(len(key1) > 8 && len(key2) > 8)
 	if cmp := bytes.Compare(key1[:len(key1)-8], key2[:len(key2)-8]); cmp != 0 {
 		return cmp

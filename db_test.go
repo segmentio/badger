@@ -80,6 +80,7 @@ func getTestOptions(dir string) Options {
 	if !*mmap {
 		opt.ValueLogLoadingMode = options.FileIO
 	}
+	opt.KeyComparator = new(y.DefaultKeyComparator)
 	return opt
 }
 
@@ -1813,7 +1814,7 @@ func TestForceFlushMemtable(t *testing.T) {
 		mt.DecrRef()
 	}
 	db.imm = db.imm[:0]
-	db.mt = skl.NewSkiplist(arenaSize(db.opt)) // Set it up for future writes.
+	db.mt = skl.NewSkiplist(arenaSize(db.opt), db.opt.KeyComparator) // Set it up for future writes.
 	db.Unlock()
 
 	// get latest value of value log head
