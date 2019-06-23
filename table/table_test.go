@@ -743,7 +743,7 @@ func getTableForBenchmarks(b *testing.B, count int) *Table {
 	}
 
 	f.Write(builder.Finish())
-	tbl, err := OpenTable(f, options.LoadToRAM, nil)
+	tbl, err := OpenTable(f, options.LoadToRAM, y.DefaultKeyComparator{}, nil)
 	require.NoError(b, err, "unable to open table")
 	return tbl
 }
